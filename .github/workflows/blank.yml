@@ -1,0 +1,52 @@
+name: Auto Update
+
+on:
+  schedule:
+    # 每小时自动执行一次
+    - cron: '0 * * * *'
+  workflow_dispatch:  # 手动触发
+
+jobs:
+  update-v2ray:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout current repository
+        uses: actions/checkout@v3
+
+      - name: Clone v2ray repository
+        run: |
+          git clone https://github.com/free18/v2ray v2ray_repo
+
+      - name: Rename .txt files
+        run: |
+          # 进入克隆的v2ray_repo目录
+          cd v2ray_repo
+          
+          # 遍历所有txt文件，排除Client.txt，将其重命名为1.txt
+          for file in *.txt; do
+            if [ "$file" != "Client.txt" ]; then
+              mv "$file" 1.txt
+              break
+            fi
+          done
+
+      - name: Compare and replace 1.txt
+        run: |
+          # 比较新的1.txt与当前仓库中的1.txt是否不同
+          if ! cmp -s v2ray_repo/1.txt 1.txt; then
+            # 如果不同，替换文件
+            mv v2ray_repo/1.txt 1.txt
+          fi
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # 检查是否有更改
+          if [ -n "$(git status --porcelain)" ]; then
+            git add 1.txt
+            git commit -m "Update 1.txt with the latest changes from v2ray repo"
+            git push
+          fi
